@@ -217,13 +217,17 @@ void welcome_dialog(RGMainWindow *mainWindow)
    // show welcome dialog
    if (_config->FindB("Synaptic::showWelcomeDialog", true) &&
        !_config->FindB("Volatile::Upgrade-Mode", false)) {
-      RGGtkBuilderUserDialog dia(mainWindow);
-      dia.run("welcome");
-      GtkWidget *cb = GTK_WIDGET(
-         gtk_builder_get_object(dia.getGtkBuilder(), "checkbutton_show_again"));
-      assert(cb);
-      _config->Set("Synaptic::showWelcomeDialog",
-                   gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(cb)));
+
+      RGGtkBuilderUserDialog::present(
+         mainWindow, "welcome", [mainWindow](auto dia, auto res) {
+            GtkWidget *cb = GTK_WIDGET(gtk_builder_get_object(
+               dia.getGtkBuilder(), "checkbutton_show_again"));
+            assert(cb);
+            _config->Set("Synaptic::showWelcomeDialog",
+                         gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(cb)));
+            gtk_widget_grab_focus(GTK_WIDGET(gtk_builder_get_object(
+               mainWindow->getGtkBuilder(), "entry_fast_search")));
+         });
    }
 }
 
@@ -302,6 +306,20 @@ pid_t TestLock(string File)
    return (fl.l_pid);
 }
 
+static void exitMessageResponse(GtkDialog *dialog,
+                                int response_id,
+                                gpointer data)
+{
+   gtk_widget_destroy(GTK_WIDGET(dialog));
+   pid_t LockedApp = GPOINTER_TO_INT(data);
+   if (LockedApp > 0) {
+      kill(LockedApp, SIGUSR1);
+      exit(0);
+   } else {
+      exit(1);
+   }
+}
+
 // check if we can get a lock, must be done after we read the configuration
 // if a lock is found and the app is synaptic send it a "come to foreground"
 // signal (USR1) or if not synaptic display a error and exit
@@ -346,19 +364,24 @@ void check_and_aquire_lock()
                                  "to finish first."));
       }
 
+      cout
+         << "Another synaptic is running. Trying to bring it to the foreground"
+         << endl;
+
       if (msg != NULL) {
          dia = gtk_message_dialog_new(
             NULL, GTK_DIALOG_MODAL, GTK_MESSAGE_ERROR, GTK_BUTTONS_CLOSE, NULL);
 
          gtk_message_dialog_set_markup(GTK_MESSAGE_DIALOG(dia), msg);
-         gtk_dialog_run(GTK_DIALOG(dia));
-         gtk_widget_destroy(dia);
+         g_free(msg);
+         g_signal_connect(dia,
+                          "response",
+                          G_CALLBACK(exitMessageResponse),
+                          GINT_TO_POINTER(LockedApp));
+         gtk_window_present(GTK_WINDOW(dia));
+         return;
       }
-      g_free(msg);
 
-      cout
-         << "Another synaptic is running. Trying to bring it to the foreground"
-         << endl;
       kill(LockedApp, SIGUSR1);
       exit(0);
    }
@@ -378,9 +401,11 @@ void check_and_aquire_lock()
          NULL, GTK_DIALOG_MODAL, GTK_MESSAGE_ERROR, GTK_BUTTONS_CLOSE, NULL);
 
       gtk_message_dialog_set_markup(GTK_MESSAGE_DIALOG(dia), msg);
-      gtk_dialog_run(GTK_DIALOG(dia));
       g_free(msg);
-      exit(1);
+      g_signal_connect(
+         dia, "response", G_CALLBACK(exitMessageResponse), GINT_TO_POINTER(-1));
+      gtk_window_present(GTK_WINDOW(dia));
+      return;
    }
 
    // we can't get a lock?!?
@@ -659,7 +684,5 @@ static void applicationActivate(GApplication *app, gpointer user_data)
       exit(0);
    } else {
       welcome_dialog(mainWindow);
-      gtk_widget_grab_focus(GTK_WIDGET(gtk_builder_get_object(
-         mainWindow->getGtkBuilder(), "entry_fast_search")));
    }
 }

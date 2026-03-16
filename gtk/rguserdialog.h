@@ -26,6 +26,8 @@
 
 #include "config.h" // IWYU pragma: associated
 
+#include <optional>
+#include <functional>
 #include "rgwindow.h"
 #include "ruserdialog.h"
 
@@ -52,6 +54,15 @@ class RGUserDialog : public RUserDialog
       bool defaultResponse = true);
 };
 
+void createUserDialog(GtkWidget *parent,
+                      const char *name,
+                      GtkWidget *& /* out */ dialog,
+                      GtkBuilder *& /* out */ builder);
+
+void dialogConnectResponse(GtkWidget *dialog,
+                           std::function<void(GtkResponseType)> callback);
+
+
 /*
  * A alternative interface for the ruserdialog, here is how it works:
  * the gtkbuilder file must called "dialog_$NAME.ui"
@@ -71,16 +82,15 @@ class RGUserDialog : public RUserDialog
  * for specific widgets in the dialog (see gtkbuilder/dialog_upgrade.ui as
  * example.
 */
-class RGGtkBuilderUserDialog : public RGUserDialog
+class RGGtkBuilderUserDialog
 {
  protected:
+   GtkWidget *_parentWindow;
    GtkWidget *_dialog;
    GtkResponseType res;
    GtkBuilder *builder;
-   void init(const char *name);
 
  public:
-   RGGtkBuilderUserDialog(RGWindow *parent);
    RGGtkBuilderUserDialog(RGWindow *parent, const char *name);
    virtual ~RGGtkBuilderUserDialog()
    {
@@ -92,9 +102,26 @@ class RGGtkBuilderUserDialog : public RGUserDialog
       gtk_window_set_title(GTK_WINDOW(_dialog), title.c_str());
    }
 
-   int run(const char *name = NULL, bool return_gtk_response = false);
+   int run(bool return_gtk_response = false);
    GtkBuilder *getGtkBuilder()
    {
       return builder;
    };
+
+   static void present(
+      RGWindow *parent,
+      const char *name,
+      std::function<void(RGGtkBuilderUserDialog &, GtkResponseType)> cb);
+   static void confirm(RGWindow *parent,
+                       const char *name,
+                       std::function<void(bool)> cb);
+   static void confirm(RGWindow *parent,
+                       const char *name,
+                       std::function<void()> ok);
+
+ private:
+   std::optional<std::function<void(RGGtkBuilderUserDialog &, GtkResponseType)>>
+      responseCallback;
+
+   static void onResponse(GtkDialog *dialog, int response_id, gpointer data);
 };

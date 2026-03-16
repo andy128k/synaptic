@@ -539,8 +539,6 @@ void RGMainWindow::cbMenuAutoInstalledClicked(GSimpleAction *action,
       pkg->setAuto(active);
       li = g_list_next(li);
    }
-   g_list_foreach(list, (GFunc)gtk_tree_path_free, NULL);
-   g_list_free(list);
 
    // write it
    GtkWidget *progress =
@@ -1583,13 +1581,21 @@ void RGMainWindow::close()
    if (_interfaceLocked > 0)
       return;
 
-   RGGtkBuilderUserDialog dia(this);
-   if (_unsavedChanges == false || dia.run("quit")) {
-      _error->Discard();
-      saveState();
-      showErrors();
-      exit(0);
+   if (_unsavedChanges) {
+      RGGtkBuilderUserDialog::confirm(
+         this, "quit", [this]() { closeResponse(); });
+   } else {
+      closeResponse();
    }
+}
+
+
+void RGMainWindow::closeResponse()
+{
+   _error->Discard();
+   saveState();
+   showErrors();
+   exit(0);
 }
 
 
@@ -1786,8 +1792,7 @@ void RGMainWindow::cbChangelogDialog(GSimpleAction *action,
       return;
 
    me->setInterfaceLocked(TRUE);
-   ShowChangelogDialog(me, pkg);
-   me->setInterfaceLocked(FALSE);
+   ShowChangelogDialog(me, pkg, [me]() { me->setInterfaceLocked(FALSE); });
 }
 
 void RGMainWindow::cbPackageListRowActivated(GtkTreeView *treeview,
@@ -1906,9 +1911,18 @@ void RGMainWindow::cbOpenClicked(GSimpleAction *action,
                                          _("_Open"),
                                          GTK_RESPONSE_ACCEPT,
                                          NULL);
-   if (gtk_dialog_run(GTK_DIALOG(filesel)) == GTK_RESPONSE_ACCEPT) {
+   g_signal_connect(filesel, "response", G_CALLBACK(cbOpenResponse), me);
+   gtk_window_present(GTK_WINDOW(filesel));
+}
+
+void RGMainWindow::cbOpenResponse(GtkDialog *filesel,
+                                  int response_id,
+                                  gpointer data)
+{
+   RGMainWindow *me = (RGMainWindow *)data;
+   if (response_id == GTK_RESPONSE_ACCEPT) {
       me->setInterfaceLocked(TRUE);
-      gtk_widget_hide(filesel);
+      gtk_widget_hide(GTK_WIDGET(filesel));
       RGFlushInterface();
 
       RPackageLister::pkgState state;
@@ -1936,7 +1950,7 @@ void RGMainWindow::cbOpenClicked(GSimpleAction *action,
       me->setStatusText();
       me->setInterfaceLocked(FALSE);
    }
-   gtk_widget_destroy(filesel);
+   gtk_widget_destroy(GTK_WIDGET(filesel));
 }
 
 void RGMainWindow::cbSaveClicked(GSimpleAction *action,
@@ -1984,17 +1998,27 @@ void RGMainWindow::cbSaveAsClicked(GSimpleAction *action,
    GtkWidget *checkButton =
       gtk_check_button_new_with_label(_("Save full state, not only changes"));
    gtk_file_chooser_set_extra_widget(GTK_FILE_CHOOSER(filesel), checkButton);
+   g_signal_connect(filesel, "response", G_CALLBACK(cbSaveAsResponse), me);
+   gtk_window_present(GTK_WINDOW(filesel));
+}
 
-   if (gtk_dialog_run(GTK_DIALOG(filesel)) == GTK_RESPONSE_ACCEPT) {
+void RGMainWindow::cbSaveAsResponse(GtkDialog *filesel,
+                                    int response_id,
+                                    gpointer data)
+{
+   RGMainWindow *me = (RGMainWindow *)data;
+   if (response_id == GTK_RESPONSE_ACCEPT) {
       const char *file;
       file = gtk_file_chooser_get_filename(GTK_FILE_CHOOSER(filesel));
       me->selectionsFilename = file;
+      GtkWidget *checkButton =
+         gtk_file_chooser_get_extra_widget(GTK_FILE_CHOOSER(filesel));
       me->saveFullState =
          gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(checkButton));
       // now call save for the actual saving
       me->cbSaveClicked(nullptr, nullptr, me);
    }
-   gtk_widget_destroy(filesel);
+   gtk_widget_destroy(GTK_WIDGET(filesel));
 }
 
 
@@ -2039,6 +2063,25 @@ void RGMainWindow::cbDetailsWindow(GSimpleAction *action,
 
    RGPkgDetailsWindow::fillInValues(me->_pkgDetails, pkg, true);
    me->_pkgDetails->show();
+}
+
+static void updateConfirmResponse(GtkDialog *dialog,
+                                  int response_id,
+                                  gpointer data)
+{
+   RGMainWindow *me = (RGMainWindow *)data;
+
+   gtk_widget_hide(GTK_WIDGET(dialog));
+
+   auto cb = g_object_steal_data(G_OBJECT(dialog), "cb_never_again");
+   if (gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(cb))) {
+      _config->Set("Synaptic::AskForUpdateAfterSrcChange", false);
+   }
+
+   if (response_id == GTK_RESPONSE_ACCEPT) {
+      me->cbUpdateClicked(nullptr, nullptr, me);
+   }
+   gtk_widget_destroy(GTK_WIDGET(dialog));
 }
 
 void RGMainWindow::cbShowSourcesWindow(GSimpleAction *action,
@@ -2127,15 +2170,10 @@ void RGMainWindow::cbShowSourcesWindow(GSimpleAction *action,
          true,
          0);
       gtk_widget_show(cb);
-      gint response = gtk_dialog_run(GTK_DIALOG(dialog));
-      gtk_widget_hide(dialog);
-      if (gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(cb))) {
-         _config->Set("Synaptic::AskForUpdateAfterSrcChange", false);
-      }
-      if (response == GTK_RESPONSE_ACCEPT) {
-         me->cbUpdateClicked(nullptr, nullptr, data);
-      }
-      gtk_widget_destroy(dialog);
+      g_object_set_data(G_OBJECT(dialog), "cb_never_again", cb);
+      g_signal_connect(
+         dialog, "response", G_CALLBACK(updateConfirmResponse), me);
+      gtk_window_present(GTK_WINDOW(dialog));
    }
 }
 
@@ -2231,11 +2269,22 @@ void RGMainWindow::cbFindToolClicked(GSimpleAction *action,
 
    if (me->_findWin == NULL) {
       me->_findWin = new RGFindWindow(me);
+      g_signal_connect(me->_findWin->window(),
+                       "response",
+                       G_CALLBACK(cbFindToolResponse),
+                       me);
    }
 
    me->_findWin->selectText();
-   int res = gtk_dialog_run(GTK_DIALOG(me->_findWin->window()));
-   if (res == GTK_RESPONSE_OK) {
+   gtk_window_present(GTK_WINDOW(me->_findWin->window()));
+}
+
+void RGMainWindow::cbFindToolResponse(GtkDialog *dialog,
+                                      int response_id,
+                                      gpointer data)
+{
+   RGMainWindow *me = (RGMainWindow *)data;
+   if (response_id == GTK_RESPONSE_OK) {
 
       // clear the quick search, otherwise both apply and that is
       // confusing
@@ -2387,11 +2436,22 @@ void RGMainWindow::cbShowFilterManagerWindow(GSimpleAction *action,
    if (me->_fmanagerWin == NULL) {
       me->_fmanagerWin =
          new RGFilterManagerWindow(me, me->_lister->filterView());
+      g_signal_connect(me->_fmanagerWin->window(),
+                       "response",
+                       G_CALLBACK(cbFilterManagerResponse),
+                       me);
    }
 
    me->_fmanagerWin->readFilters();
-   int res = gtk_dialog_run(GTK_DIALOG(me->_fmanagerWin->window()));
-   if (res == GTK_RESPONSE_OK) {
+   gtk_window_present(GTK_WINDOW(me->_fmanagerWin->window()));
+}
+
+void RGMainWindow::cbFilterManagerResponse(GtkDialog *dialog,
+                                           int response_id,
+                                           gpointer data)
+{
+   RGMainWindow *me = (RGMainWindow *)data;
+   if (response_id == GTK_RESPONSE_OK) {
       me->setInterfaceLocked(TRUE);
 
       me->_lister->filterView()->refreshFilters();
@@ -2432,7 +2492,7 @@ void RGMainWindow::cbSelectedRow(GtkTreeSelection *selection, gpointer data)
       return;
 
    // free the list
-   g_list_foreach(list, (GFunc)gtk_tree_path_free, NULL);
+   g_list_foreach(list, (void (*)(void *, void *))gtk_tree_path_free, NULL);
    g_list_free(list);
 
    me->updatePackageInfo(pkg);
@@ -2636,9 +2696,10 @@ void RGMainWindow::cbProceedClicked(GSimpleAction *action,
                                     gpointer data)
 {
    RGMainWindow *me = (RGMainWindow *)data;
+   RGSummaryWindow *summ;
 
    // nothing to do
-   int installed, broken;
+   int listed, installed, broken;
    int toInstall, toRemove;
    double size;
    me->_lister->getStats(installed, broken, toInstall, toRemove, size);
@@ -2777,13 +2838,13 @@ void RGMainWindow::cbShowWelcomeDialog(GSimpleAction *action,
                                        gpointer data)
 {
    RGMainWindow *me = (RGMainWindow *)data;
-   RGGtkBuilderUserDialog dia(me);
-   dia.run("welcome");
-   GtkWidget *cb = GTK_WIDGET(
-      gtk_builder_get_object(dia.getGtkBuilder(), "checkbutton_show_again"));
-   assert(cb);
-   _config->Set("Synaptic::showWelcomeDialog",
-                gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(cb)));
+   RGGtkBuilderUserDialog::present(me, "welcome", [](auto dia, auto res) {
+      auto cb = GTK_TOGGLE_BUTTON(
+         gtk_builder_get_object(dia.getGtkBuilder(), "checkbutton_show_again"));
+      assert(cb);
+      _config->Set("Synaptic::showWelcomeDialog",
+                   gtk_toggle_button_get_active(cb));
+   });
 }
 
 gboolean RGMainWindow::xapianDoSearch(void *data)
@@ -2941,9 +3002,6 @@ void RGMainWindow::cbUpgradeClicked(GSimpleAction *action,
                                     gpointer data)
 {
    RGMainWindow *me = (RGMainWindow *)data;
-   RPackage *pkg = me->selectedPackage();
-   bool dist_upgrade;
-   int res;
 
    if (!me->_lister->check()) {
       me->_userDialog->error(_("Could not upgrade the system!\n"
@@ -2964,64 +3022,70 @@ void RGMainWindow::cbUpgradeClicked(GSimpleAction *action,
 
    if (upgrade == UPGRADE_ASK) {
       // ask what type of upgrade the user wants
-      GtkBuilder *builder;
-      GtkWidget *button;
+      RGGtkBuilderUserDialog::present(me, "upgrade", [me](auto dia, auto res) {
+         bool dist_upgrade;
+         switch (res) {
+            case GTK_RESPONSE_CANCEL:
+            case GTK_RESPONSE_DELETE_EVENT:
+               return;
+            case GTK_RESPONSE_YES:
+               dist_upgrade = true;
+               break;
+            case GTK_RESPONSE_NO:
+               dist_upgrade = false;
+               break;
+            default:
+               cerr << "unknown return " << res
+                    << " from UpgradeDialog, please report" << endl;
+         }
+         auto builder = dia.getGtkBuilder();
+         // see if the user wants the answer saved
+         auto button =
+            GTK_WIDGET(gtk_builder_get_object(builder, "checkbutton_remember"));
+         if (gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(button)))
+            _config->Set("Synaptic::upgradeType", dist_upgrade);
 
-      RGGtkBuilderUserDialog dia(me);
-      res = dia.run("upgrade", true);
-      switch (res) {
-         case GTK_RESPONSE_CANCEL:
-         case GTK_RESPONSE_DELETE_EVENT:
-            return;
-         case GTK_RESPONSE_YES:
-            dist_upgrade = true;
-            break;
-         case GTK_RESPONSE_NO:
-            dist_upgrade = false;
-            break;
-         default:
-            cerr << "unknown return " << res
-                 << " from UpgradeDialog, please report" << endl;
-      }
-      builder = dia.getGtkBuilder();
-      // see if the user wants the answer saved
-      button =
-         GTK_WIDGET(gtk_builder_get_object(builder, "checkbutton_remember"));
-      if (gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(button)))
-         _config->Set("Synaptic::upgradeType", dist_upgrade);
+         me->cbUpgrade(dist_upgrade);
+      });
    } else {
       // use the saved answer (don't ask)
-      dist_upgrade = upgrade;
+      me->cbUpgrade(upgrade);
    }
+}
+
+void RGMainWindow::cbUpgrade(bool dist_upgrade)
+{
+   RPackage *pkg = selectedPackage();
 
    // do the work
-   me->setInterfaceLocked(TRUE);
-   me->setStatusText(_("Marking all available upgrades..."));
+   setInterfaceLocked(TRUE);
+   setStatusText(_("Marking all available upgrades..."));
 
-   me->_lister->saveUndoState();
+   _lister->saveUndoState();
 
    RPackageLister::pkgState state;
-   me->_lister->saveState(state);
+   _lister->saveState(state);
 
+   int res;
    if (dist_upgrade)
-      res = me->_lister->distUpgrade();
+      res = _lister->distUpgrade();
    else
-      res = me->_lister->upgrade();
+      res = _lister->upgrade();
 
-   if (me->askStateChange(state)) {
-      me->refreshTable(pkg);
+   if (askStateChange(state)) {
+      refreshTable(pkg);
 
       if (res)
-         me->setStatusText(_("Successfully marked available upgrades"));
+         setStatusText(_("Successfully marked available upgrades"));
       else
-         me->setStatusText(_("Failed to mark all available upgrades!"));
+         setStatusText(_("Failed to mark all available upgrades!"));
    } else {
       // if the user canceled the action, just show the default message
-      me->setStatusText();
+      setStatusText();
    }
 
-   me->setInterfaceLocked(FALSE);
-   me->showErrors();
+   setInterfaceLocked(FALSE);
+   showErrors();
 }
 
 void RGMainWindow::cbMenuPinClicked(GSimpleAction *action,
@@ -3095,7 +3159,7 @@ void RGMainWindow::cbMenuPinClicked(GSimpleAction *action,
    g_free((void *)file);
 
    // free the list
-   g_list_foreach(list, (GFunc)gtk_tree_path_free, NULL);
+   g_list_foreach(list, (void (*)(void *, void *))gtk_tree_path_free, NULL);
    g_list_free(list);
 
    me->_lister->registerObserver(me);
@@ -3343,8 +3407,8 @@ void RGMainWindow::cbGenerateDownloadScriptClicked(GSimpleAction *action,
       return;
    }
 
-   vector<string> uris;
-   if (!me->_lister->getDownloadUris(uris))
+   vector<string> *uris = new vector<string>;
+   if (!me->_lister->getDownloadUris(*uris))
       return;
 
    GtkWidget *filesel;
@@ -3356,19 +3420,29 @@ void RGMainWindow::cbGenerateDownloadScriptClicked(GSimpleAction *action,
                                          _("_Save"),
                                          GTK_RESPONSE_ACCEPT,
                                          NULL);
-   int res = gtk_dialog_run(GTK_DIALOG(filesel));
-   const char *file = gtk_file_chooser_get_filename(GTK_FILE_CHOOSER(filesel));
-   gtk_widget_destroy(filesel);
-   if (res != GTK_RESPONSE_ACCEPT)
-      return;
+   g_signal_connect(
+      filesel, "response", G_CALLBACK(cbGenerateDownloadScriptResponse), uris);
+   gtk_window_present(GTK_WINDOW(filesel));
+}
 
-   // FIXME: this is prototype code, hardcoding wget here suckx
-   ofstream out(file);
-   out << "#!/bin/sh" << endl;
-   for (int i = 0; i < uris.size(); i++) {
-      out << "wget -c " << uris[i] << endl;
+void RGMainWindow::cbGenerateDownloadScriptResponse(GtkDialog *filesel,
+                                                    int response_id,
+                                                    gpointer data)
+{
+   auto uris = static_cast<vector<string> *>(data);
+   if (response_id == GTK_RESPONSE_ACCEPT) {
+      const char *file =
+         gtk_file_chooser_get_filename(GTK_FILE_CHOOSER(filesel));
+      // FIXME: this is prototype code, hardcoding wget here suckx
+      ofstream out(file);
+      out << "#!/bin/sh" << endl;
+      for (int i = 0; i < uris->size(); i++) {
+         out << "wget -c " << (*uris)[i] << endl;
+      }
+      chmod(file, 0755);
    }
-   chmod(file, 0755);
+   delete uris;
+   gtk_widget_destroy(GTK_WIDGET(filesel));
 }
 
 void RGMainWindow::cbAddDownloadedFilesClicked(GSimpleAction *action,
@@ -3387,10 +3461,24 @@ void RGMainWindow::cbAddDownloadedFilesClicked(GSimpleAction *action,
                                          _("_Open"),
                                          GTK_RESPONSE_ACCEPT,
                                          NULL);
-   int res = gtk_dialog_run(GTK_DIALOG(filesel));
+   g_signal_connect(
+      filesel, "response", G_CALLBACK(cbAddDownloadedFilesResponse), me);
+   gtk_window_present(GTK_WINDOW(filesel));
+
+#else
+   me->_userDialog->error("Sorry, not implemented for rpm, patches welcome");
+#endif
+}
+
+void RGMainWindow::cbAddDownloadedFilesResponse(GtkDialog *filesel,
+                                                int response_id,
+                                                gpointer data)
+{
+   RGMainWindow *me = (RGMainWindow *)data;
+
    const char *path = gtk_file_chooser_get_filename(GTK_FILE_CHOOSER(filesel));
-   gtk_widget_destroy(filesel);
-   if (res != GTK_RESPONSE_ACCEPT)
+   gtk_widget_destroy(GTK_WIDGET(filesel));
+   if (response_id != GTK_RESPONSE_ACCEPT)
       return;
    if (!g_file_test(path, G_FILE_TEST_IS_DIR)) {
       me->_userDialog->error(_("Please select a directory"));
@@ -3425,8 +3513,4 @@ void RGMainWindow::cbAddDownloadedFilesClicked(GSimpleAction *action,
 
    // click proceed
    me->cbProceedClicked(nullptr, nullptr, me);
-
-#else
-   me->_userDialog->error("Sorry, not implemented for rpm, patches welcome");
-#endif
 }

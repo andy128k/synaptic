@@ -169,8 +169,9 @@ void RGPkgDetailsWindow::doShowBigScreenshot(RPackage *pkg)
    gtk_widget_show(img);
    GtkWidget *content_area = gtk_dialog_get_content_area(GTK_DIALOG(win));
    gtk_container_add(GTK_CONTAINER(content_area), img);
-   gtk_dialog_run(GTK_DIALOG(win));
-   gtk_widget_destroy(win);
+   g_signal_connect_swapped(
+      win, "response", G_CALLBACK(gtk_widget_destroy), win);
+   gtk_window_present(GTK_WINDOW(win));
 }
 
 void RGPkgDetailsWindow::cbShowScreenshot(GtkWidget *button, void *data)
@@ -207,7 +208,7 @@ void RGPkgDetailsWindow::cbShowChangelog(GtkWidget *button, void *data)
 {
    RPackage *pkg = (RPackage *)data;
    RGWindow *parent = (RGWindow *)g_object_get_data(G_OBJECT(button), "me");
-   ShowChangelogDialog(parent, pkg);
+   ShowChangelogDialog(parent, pkg, []() {});
 }
 
 gboolean RGPkgDetailsWindow::cbOpenLink(GtkWidget *label,

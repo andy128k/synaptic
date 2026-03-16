@@ -112,6 +112,9 @@ class RGPreferencesWindow : public RGGtkBuilderWindow
 
    // callbacks
    static void changeFontAction(GtkWidget *self, void *data);
+   static void changeFontDialogResponse(GtkDialog *dialog,
+                                        int response_id,
+                                        gpointer data);
    static void checkbuttonUserFontToggled(GtkWidget *self, void *data);
    static void checkbuttonUserTerminalFontToggled(GtkWidget *self, void *data);
 
@@ -135,6 +138,9 @@ class RGPreferencesWindow : public RGGtkBuilderWindow
    static void clearCacheAction(GtkWidget *self, void *data);
 
    static void colorClicked(GtkWidget *self, void *data);
+   static void colorDialogResponse(GtkDialog *dialog,
+                                   int response_id,
+                                   gpointer data);
    static void buttonAuthenticationClicked(GtkWidget *self, void *data);
 
    static void useProxyToggled(GtkWidget *self, void *data);

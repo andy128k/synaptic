@@ -155,6 +155,7 @@ class RGMainWindow : public RGGtkBuilderWindow, public RPackageObserver
    void refreshSubViewList();
 
    virtual void close() override;
+   void closeResponse();
    static void closeWin(GSimpleAction *action, GVariant *parameter, gpointer me)
    {
       ((RGMainWindow *)me)->close();
@@ -297,6 +298,9 @@ class RGMainWindow : public RGGtkBuilderWindow, public RPackageObserver
    static void cbOpenClicked(GSimpleAction *action,
                              GVariant *parameter,
                              gpointer data);
+   static void cbOpenResponse(GtkDialog *dialog,
+                              int response_id,
+                              gpointer data);
    static void cbSaveClicked(GSimpleAction *action,
                              GVariant *parameter,
                              gpointer data);
@@ -304,13 +308,22 @@ class RGMainWindow : public RGGtkBuilderWindow, public RPackageObserver
                                GVariant *parameter,
                                gpointer data);
    std::string selectionsFilename;
+   static void cbSaveAsResponse(GtkDialog *dialog,
+                                int response_id,
+                                gpointer data);
    bool saveFullState;
    static void cbGenerateDownloadScriptClicked(GSimpleAction *action,
                                                GVariant *parameter,
                                                gpointer data);
+   static void cbGenerateDownloadScriptResponse(GtkDialog *dialog,
+                                                int response_id,
+                                                gpointer data);
    static void cbAddDownloadedFilesClicked(GSimpleAction *action,
                                            GVariant *parameter,
                                            gpointer data);
+   static void cbAddDownloadedFilesResponse(GtkDialog *dialog,
+                                            int response_id,
+                                            gpointer data);
    static void cbViewLogClicked(GSimpleAction *action,
                                 GVariant *parameter,
                                 gpointer data);
@@ -337,6 +350,7 @@ class RGMainWindow : public RGGtkBuilderWindow, public RPackageObserver
    static void cbUpgradeClicked(GSimpleAction *action,
                                 GVariant *parameter,
                                 gpointer data);
+   void cbUpgrade(bool dist_upgrade);
    static void cbProceedClicked(GSimpleAction *action,
                                 GVariant *parameter,
                                 gpointer data);
@@ -353,6 +367,9 @@ class RGMainWindow : public RGGtkBuilderWindow, public RPackageObserver
    static void cbShowFilterManagerWindow(GSimpleAction *action,
                                          GVariant *parameter,
                                          gpointer data);
+   static void cbFilterManagerResponse(GtkDialog *dialog,
+                                       int response_id,
+                                       gpointer data);
    static void cbSaveFilterAction(void *self, RGFilterWindow *rwin);
    static void cbCloseFilterAction(void *self, RGFilterWindow *rwin);
    static void cbCloseFilterManagerAction(void *self, bool okcancel);
@@ -361,6 +378,9 @@ class RGMainWindow : public RGGtkBuilderWindow, public RPackageObserver
    static void cbFindToolClicked(GSimpleAction *action,
                                  GVariant *parameter,
                                  gpointer data);
+   static void cbFindToolResponse(GtkDialog *dialog,
+                                  int response_id,
+                                  gpointer data);
 
    // preferences menu
    static void cbShowConfigWindow(GSimpleAction *action,
