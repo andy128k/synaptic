@@ -24,5 +24,8 @@
 
 class RGWindow;
 class RPackage;
+#include <functional>
 
-void ShowChangelogDialog(RGWindow *me, RPackage *pkg);
+void ShowChangelogDialog(RGWindow *me,
+                         RPackage *pkg,
+                         std::function<void()> cont);

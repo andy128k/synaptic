@@ -101,6 +101,7 @@ const char *RGPreferencesWindow::upgrade_method[] = {N_("Always Ask"),
 void RGPreferencesWindow::cbHttpProxyEntryChanged(GtkWidget *self, void *data)
 {
    // this function strips http:// from a entred proxy url
+   RGPreferencesWindow *me = (RGPreferencesWindow *)data;
    const gchar *text = gtk_entry_get_text(GTK_ENTRY(self));
    gchar *new_text = NULL;
    if (g_str_has_prefix(text, "http://")) {
@@ -499,22 +500,42 @@ void RGPreferencesWindow::changeFontAction(GtkWidget *self, void *data)
 
    GtkWidget *fontsel = gtk_font_chooser_dialog_new(
       _("Choose font"), GTK_WINDOW(gtk_widget_get_toplevel(self)));
+   gtk_window_set_modal(GTK_WINDOW(fontsel), true);
 
    gtk_font_chooser_set_font(GTK_FONT_CHOOSER(fontsel),
                              _config->Find(propName, fontName).c_str());
 
-   gint result = gtk_dialog_run(GTK_DIALOG(fontsel));
-   if (result != GTK_RESPONSE_OK) {
-      gtk_widget_destroy(fontsel);
-      return;
+   g_signal_connect(
+      fontsel, "response", G_CALLBACK(changeFontDialogResponse), data);
+   gtk_window_present(GTK_WINDOW(fontsel));
+}
+
+void RGPreferencesWindow::changeFontDialogResponse(GtkDialog *fontsel,
+                                                   int response_id,
+                                                   gpointer data)
+{
+   const char *propName;
+   switch (GPOINTER_TO_INT(data)) {
+      case FONT_DEFAULT:
+         propName = "Synaptic::FontName";
+         break;
+      case FONT_TERMINAL:
+         propName = "Synaptic::TerminalFontName";
+         break;
+      default:
+         cerr << "changeFontAction called with unknown argument" << endl;
+         return;
    }
 
-   fontName = gtk_font_chooser_get_font(GTK_FONT_CHOOSER(fontsel));
-   // cout << "fontname: " << fontName << endl;
+   if (response_id == GTK_RESPONSE_OK) {
+      const char *fontName =
+         gtk_font_chooser_get_font(GTK_FONT_CHOOSER(fontsel));
+      // cout << "fontname: " << fontName << endl;
 
-   _config->Set(propName, fontName);
+      _config->Set(propName, fontName);
+   }
 
-   gtk_widget_destroy(fontsel);
+   gtk_widget_destroy(GTK_WIDGET(fontsel));
 }
 
 void RGPreferencesWindow::clearCacheAction(GtkWidget *self, void *data)
@@ -945,32 +966,50 @@ void RGPreferencesWindow::cbToggleColumn(GtkWidget *self,
       GTK_LIST_STORE(model), &iter, TREE_CHECKBOX_COLUMN, !res, -1);
 }
 
+struct ColorPickerClosure
+{
+   RGPreferencesWindow *pref_window;
+   int status;
+};
 
 void RGPreferencesWindow::colorClicked(GtkWidget *self, void *data)
 {
    GtkWidget *color_dialog;
-   RGPreferencesWindow *me;
-   me = (RGPreferencesWindow *)g_object_get_data(G_OBJECT(self), "me");
+
+   auto closure = static_cast<ColorPickerClosure *>(data);
+   auto me = closure->pref_window;
 
    color_dialog = gtk_color_chooser_dialog_new(
       _("Color selection"),
       GTK_WINDOW(gtk_builder_get_object(me->_builder, "window_preferences")));
+   gtk_window_set_modal(GTK_WINDOW(color_dialog), true);
    gtk_color_chooser_set_use_alpha(GTK_COLOR_CHOOSER(color_dialog), false);
 
    GdkRGBA *color = NULL;
-   color = RGPackageStatus::pkgStatus.getColor(GPOINTER_TO_INT(data));
+   color = RGPackageStatus::pkgStatus.getColor(closure->status);
    if (color != NULL)
       gtk_color_chooser_set_rgba(GTK_COLOR_CHOOSER(color_dialog), color);
 
-   if (gtk_dialog_run(GTK_DIALOG(color_dialog)) == GTK_RESPONSE_OK) {
+   g_signal_connect(
+      color_dialog, "response", G_CALLBACK(colorDialogResponse), closure);
+   gtk_window_present(GTK_WINDOW(color_dialog));
+}
+
+void RGPreferencesWindow::colorDialogResponse(GtkDialog *color_dialog,
+                                              int response_id,
+                                              gpointer data)
+{
+   auto closure = static_cast<ColorPickerClosure *>(data);
+
+   if (response_id == GTK_RESPONSE_OK) {
       GdkRGBA current_color;
       gtk_color_chooser_get_rgba(GTK_COLOR_CHOOSER(color_dialog),
                                  &current_color);
-      RGPackageStatus::pkgStatus.setColor(GPOINTER_TO_INT(data),
+      RGPackageStatus::pkgStatus.setColor(closure->status,
                                           gdk_rgba_copy(&current_color));
-      me->readColors();
+      closure->pref_window->readColors();
    }
-   gtk_widget_destroy(color_dialog);
+   gtk_widget_destroy(GTK_WIDGET(color_dialog));
 }
 
 void RGPreferencesWindow::useProxyToggled(GtkWidget *self, void *data)
@@ -1237,11 +1276,16 @@ RGPreferencesWindow::RGPreferencesWindow(RGWindow *win, RPackageLister *lister)
       gtk_style_context_add_provider(gtk_widget_get_style_context(button),
                                      GTK_STYLE_PROVIDER(_css_provider),
                                      GTK_STYLE_PROVIDER_PRIORITY_APPLICATION);
-      g_object_set_data(G_OBJECT(button), "me", this);
-      g_signal_connect(G_OBJECT(button),
-                       "clicked",
-                       G_CALLBACK(colorClicked),
-                       GINT_TO_POINTER(i));
+
+      ColorPickerClosure *closure = g_new0(ColorPickerClosure, 1);
+      closure->pref_window = this;
+      closure->status = i;
+      g_signal_connect_data(G_OBJECT(button),
+                            "clicked",
+                            G_CALLBACK(colorClicked),
+                            closure,
+                            (GClosureNotify)g_free,
+                            G_CONNECT_DEFAULT);
       g_free(color_button);
    }
 

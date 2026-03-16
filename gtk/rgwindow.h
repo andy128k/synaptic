@@ -59,7 +59,7 @@ class RGWindow
 
    inline virtual void show()
    {
-      gtk_widget_show(_win);
+      gtk_window_present(GTK_WINDOW(_win));
    }
 
    explicit RGWindow(RGWindow *parent, std::string name);

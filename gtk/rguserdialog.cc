@@ -205,20 +205,16 @@ RGGtkBuilderUserDialog::RGGtkBuilderUserDialog(RGWindow *parent,
                                                const char *name)
 {
    _parentWindow = parent->window();
-   init(name);
+   createUserDialog(_parentWindow, name, _dialog, builder);
 }
 
-RGGtkBuilderUserDialog::RGGtkBuilderUserDialog(RGWindow *parent) : builder(0)
-{
-   _parentWindow = parent->window();
-}
-
-void RGGtkBuilderUserDialog::init(const char *name)
+void createUserDialog(GtkWidget *parent,
+                      const char *name,
+                      GtkWidget *& /* out */ dialog,
+                      GtkBuilder *& /* out */ builder)
 {
    gchar *main_widget = NULL;
    GError *error = NULL;
-
-   // cerr << "RGGtkBuilderUserDialog::init() '" << name << "'" << endl;
 
    builder = gtk_builder_new();
    std::string resource_path =
@@ -228,23 +224,20 @@ void RGGtkBuilderUserDialog::init(const char *name)
       g_warning("Couldn't load builder resource: %s", error->message);
       g_error_free(error);
    }
-   _dialog = GTK_WIDGET(gtk_builder_get_object(builder, main_widget));
-   assert(_dialog);
-   gtk_window_set_icon_name(GTK_WINDOW(_dialog), "synaptic");
+   dialog = GTK_WIDGET(gtk_builder_get_object(builder, main_widget));
+   assert(dialog);
+   gtk_window_set_icon_name(GTK_WINDOW(dialog), "synaptic");
 
-   gtk_window_set_position(GTK_WINDOW(_dialog), GTK_WIN_POS_CENTER_ON_PARENT);
-   if (gtk_window_get_modal(GTK_WINDOW(_dialog)))
-      gtk_window_set_skip_taskbar_hint(GTK_WINDOW(_dialog), TRUE);
-   gtk_window_set_transient_for(GTK_WINDOW(_dialog), GTK_WINDOW(_parentWindow));
+   gtk_window_set_position(GTK_WINDOW(dialog), GTK_WIN_POS_CENTER_ON_PARENT);
+   if (gtk_window_get_modal(GTK_WINDOW(dialog)))
+      gtk_window_set_skip_taskbar_hint(GTK_WINDOW(dialog), TRUE);
+   gtk_window_set_transient_for(GTK_WINDOW(dialog), GTK_WINDOW(parent));
 
    g_free(main_widget);
 }
 
-int RGGtkBuilderUserDialog::run(const char *name, bool return_gtk_response)
+int RGGtkBuilderUserDialog::run(bool return_gtk_response)
 {
-   if (name != NULL)
-      init(name);
-
    res = (GtkResponseType)gtk_dialog_run(GTK_DIALOG(_dialog));
    gtk_widget_hide(_dialog);
 
@@ -253,4 +246,87 @@ int RGGtkBuilderUserDialog::run(const char *name, bool return_gtk_response)
    else
       return (res == GTK_RESPONSE_OK) || (res == GTK_RESPONSE_YES) ||
              (res == GTK_RESPONSE_CLOSE);
+}
+
+void RGGtkBuilderUserDialog::present(
+   RGWindow *parent,
+   const char *name,
+   std::function<void(RGGtkBuilderUserDialog &, GtkResponseType)> cb)
+{
+   auto dialog = new RGGtkBuilderUserDialog(parent, name);
+   g_signal_connect(dialog->_dialog,
+                    "response",
+                    G_CALLBACK(RGGtkBuilderUserDialog::onResponse),
+                    dialog);
+   dialog->responseCallback = std::optional(cb);
+   gtk_window_present(GTK_WINDOW(dialog->_dialog));
+}
+
+void RGGtkBuilderUserDialog::confirm(RGWindow *parent,
+                                     const char *name,
+                                     std::function<void(bool)> cb)
+{
+   present(
+      parent, name, [cb](RGGtkBuilderUserDialog &dlg, GtkResponseType res) {
+         cb((dlg.res == GTK_RESPONSE_OK) || (dlg.res == GTK_RESPONSE_YES) ||
+            (dlg.res == GTK_RESPONSE_CLOSE));
+      });
+}
+
+void RGGtkBuilderUserDialog::confirm(RGWindow *parent,
+                                     const char *name,
+                                     std::function<void()> cb)
+{
+   confirm(parent, name, [cb](int isOk) {
+      if (isOk) {
+         cb();
+      }
+   });
+}
+
+void RGGtkBuilderUserDialog::onResponse(GtkDialog *dialog,
+                                        int response_id,
+                                        gpointer data)
+{
+   auto self = static_cast<RGGtkBuilderUserDialog *>(data);
+
+   self->res = static_cast<GtkResponseType>(response_id);
+   gtk_widget_hide(self->_dialog);
+
+   if (self->responseCallback) {
+      (*self->responseCallback)(*self, self->res);
+   }
+
+   delete self;
+}
+
+
+struct DialogResponseCallback
+{
+   std::function<void(GtkResponseType)> callback;
+};
+
+static void dialogOnResponse(GtkDialog *dialog, int response_id, gpointer data)
+{
+   auto cb = static_cast<DialogResponseCallback *>(data);
+   auto res = static_cast<GtkResponseType>(response_id);
+   cb->callback(res);
+}
+
+static void dialogDestroy(gpointer data, GClosure *closure)
+{
+   auto cb = static_cast<DialogResponseCallback *>(data);
+   delete cb;
+}
+
+void dialogConnectResponse(GtkWidget *dialog,
+                           std::function<void(GtkResponseType)> callback)
+{
+   auto cb = new DialogResponseCallback{std::move(callback)};
+   g_signal_connect_data(dialog,
+                         "response",
+                         G_CALLBACK(dialogOnResponse),
+                         cb,
+                         dialogDestroy,
+                         G_CONNECT_DEFAULT);
 }
