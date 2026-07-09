@@ -1,0 +1,32 @@
+name: RPM
+
+on:
+  push:
+    branches: [ master ]
+  pull_request:
+    branches: [ master ]
+
+jobs:
+  build:
+
+    runs-on: ubuntu-latest
+
+    container:
+      image: alt:latest
+
+    steps:
+    - name: update and install packages
+      run: |
+        apt-get update
+        apt-get install -y build-essential meson ninja-build nodejs libgtk+3-devel appstream libpolkit-devel libapt-devel librpm-devel
+
+    - uses: actions/checkout@v7
+
+    - name: autogen.sh
+      run: ./autogen.sh
+
+    - name: configure
+      run: ./configure
+
+    - name: make
+      run: make

@@ -1047,17 +1047,17 @@ bool RPackageLister::getStateChanges(RPackageLister::pkgState &state,
 
    if (sorted == true && changed == true) {
       if (toKeep.empty() == false)
-         sort(toKeep.begin(), toKeep.end(), bla());
+         sort(toKeep.begin(), toKeep.end(), RPackage::byNameAscending);
       if (toInstall.empty() == false)
-         sort(toInstall.begin(), toInstall.end(), bla());
+         sort(toInstall.begin(), toInstall.end(), RPackage::byNameAscending);
       if (toReInstall.empty() == false)
-         sort(toReInstall.begin(), toReInstall.end(), bla());
+         sort(toReInstall.begin(), toReInstall.end(), RPackage::byNameAscending);
       if (toUpgrade.empty() == false)
-         sort(toUpgrade.begin(), toUpgrade.end(), bla());
+         sort(toUpgrade.begin(), toUpgrade.end(), RPackage::byNameAscending);
       if (toRemove.empty() == false)
-         sort(toRemove.begin(), toRemove.end(), bla());
+         sort(toRemove.begin(), toRemove.end(), RPackage::byNameAscending);
       if (toDowngrade.empty() == false)
-         sort(toDowngrade.begin(), toDowngrade.end(), bla());
+         sort(toDowngrade.begin(), toDowngrade.end(), RPackage::byNameAscending);
    }
 
    return changed;
