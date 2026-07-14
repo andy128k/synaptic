@@ -618,7 +618,7 @@ void RGPreferencesWindow::readColors()
 {
    GdkRGBA *color;
    gchar *color_button = NULL;
-   GtkWidget *button = NULL;
+   GtkColorDialogButton *button = NULL;
 
    // Color packages by their status
    gtk_check_button_set_active(
@@ -626,33 +626,20 @@ void RGPreferencesWindow::readColors()
       _config->FindB("Synaptic::UseStatusColors", true));
 
    // color buttons
-   GString *custom_css = g_string_new("");
+   GdkRGBA white = {1.0, 1.0, 1.0, 1.0};
    for (int i = 0; i < RGPackageStatus::N_STATUS_COUNT; i++) {
       color_button =
          g_strdup_printf("button_%s_color",
                          RGPackageStatus::pkgStatus.getShortStatusString(
                             RGPackageStatus::PkgStatus(i)));
-      button = GTK_WIDGET(gtk_builder_get_object(_builder, color_button));
+      button = GTK_COLOR_DIALOG_BUTTON(
+         gtk_builder_get_object(_builder, color_button));
       assert(button);
-      gtk_widget_set_name(button, color_button);
-      if (RGPackageStatus::pkgStatus.getColor(i) != NULL) {
-         color = RGPackageStatus::pkgStatus.getColor(i);
-         // I whish I could just use gtk_widget_change_background_color
-         // but see gtk bug https://bugzilla.gnome.org/show_bug.cgi?id=656461
-         gchar *color_string = gdk_rgba_to_string(color);
-         g_string_append_printf(custom_css,
-                                "GtkButton#%s { "
-                                " background:none; "
-                                " background-color:%s; "
-                                "} ",
-                                color_button,
-                                color_string);
-         g_free(color_string);
-      }
-      gtk_css_provider_load_from_data(_css_provider, custom_css->str, -1);
+      color = RGPackageStatus::pkgStatus.getColor(i);
+      gtk_color_dialog_button_set_rgba(button,
+                                       color != nullptr ? color : &white);
       g_free(color_button);
    }
-   g_string_free(custom_css, TRUE);
 }
 
 void RGPreferencesWindow::readFiles()
@@ -945,40 +932,18 @@ void RGPreferencesWindow::cbToggleColumn(GtkWidget *self,
 }
 
 
-void RGPreferencesWindow::cbColorClicked(GtkWidget *self, void *data)
+void RGPreferencesWindow::cbColorChanged(GObject *self,
+                                         GParamSpec *pspec,
+                                         gpointer data)
 {
    RGPreferencesWindow *me =
       (RGPreferencesWindow *)g_object_get_data(G_OBJECT(self), "me");
    int status = GPOINTER_TO_INT(data);
 
-   start_task(
-      [me, status]() -> task<void> { co_await me->colorClicked(status); });
-}
-
-task<void> RGPreferencesWindow::colorClicked(int status)
-{
-   GtkWidget *color_dialog;
-
-   color_dialog =
-      gtk_color_chooser_dialog_new(_("Color selection"), GTK_WINDOW(window()));
-   gtk_window_set_modal(GTK_WINDOW(color_dialog), true);
-   gtk_color_chooser_set_use_alpha(GTK_COLOR_CHOOSER(color_dialog), false);
-
-   GdkRGBA *color = NULL;
-   color = RGPackageStatus::pkgStatus.getColor(status);
-   if (color != NULL)
-      gtk_color_chooser_set_rgba(GTK_COLOR_CHOOSER(color_dialog), color);
-
-   int response_id = co_await co_run_dialog(GTK_DIALOG(color_dialog));
-   if (response_id == GTK_RESPONSE_OK) {
-      GdkRGBA current_color;
-      gtk_color_chooser_get_rgba(GTK_COLOR_CHOOSER(color_dialog),
-                                 &current_color);
-      RGPackageStatus::pkgStatus.setColor(status,
-                                          gdk_rgba_copy(&current_color));
-      readColors();
-   }
-   gtk_window_destroy(GTK_WINDOW(color_dialog));
+   const GdkRGBA *current_color =
+      gtk_color_dialog_button_get_rgba(GTK_COLOR_DIALOG_BUTTON(self));
+   RGPackageStatus::pkgStatus.setColor(status, gdk_rgba_copy(current_color));
+   me->readColors();
 }
 
 void RGPreferencesWindow::useProxyToggled(GtkWidget *self, void *data)
@@ -1028,7 +993,6 @@ RGPreferencesWindow::RGPreferencesWindow(RGWindow *win, RPackageLister *lister)
    GtkListStore *comboStore;
    GtkTreeIter comboIter;
 
-   _css_provider = gtk_css_provider_new();
    _optionShowAllPkgInfoInMain =
       GTK_WIDGET(gtk_builder_get_object(_builder, "check_show_all_pkg_info"));
    _optionUseStatusColors =
@@ -1242,13 +1206,10 @@ RGPreferencesWindow::RGPreferencesWindow(RGWindow *win, RPackageLister *lister)
                             RGPackageStatus::PkgStatus(i)));
       button = GTK_WIDGET(gtk_builder_get_object(_builder, color_button));
       assert(button);
-      gtk_style_context_add_provider(gtk_widget_get_style_context(button),
-                                     GTK_STYLE_PROVIDER(_css_provider),
-                                     GTK_STYLE_PROVIDER_PRIORITY_APPLICATION);
       g_object_set_data(G_OBJECT(button), "me", this);
-      g_signal_connect(G_OBJECT(button),
-                       "clicked",
-                       G_CALLBACK(cbColorClicked),
+      g_signal_connect(G_OBJECT(column),
+                       "notify::rgba",
+                       G_CALLBACK(cbColorChanged),
                        GINT_TO_POINTER(i));
       g_free(color_button);
    }
@@ -1257,9 +1218,7 @@ RGPreferencesWindow::RGPreferencesWindow(RGWindow *win, RPackageLister *lister)
 }
 
 RGPreferencesWindow::~RGPreferencesWindow()
-{
-   g_object_unref(_css_provider);
-}
+{}
 
 void RGPreferencesWindow::buttonAuthenticationClicked(GtkWidget *self,
                                                       void *data)

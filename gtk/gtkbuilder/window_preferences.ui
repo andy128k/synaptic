@@ -50,6 +50,9 @@
       <column type="gchararray"/>
     </columns>
   </object>
+  <object class="GtkColorDialog" id="color_dialog">
+    <property name="with-alpha">False</property>
+  </object>
   <object class="GtkWindow" id="window_preferences">
     <property name="title" translatable="yes">Preferences</property>
     <property name="resizable">False</property>
@@ -542,10 +545,8 @@
                                           </object>
                                         </child>
                                         <child>
-                                          <object class="GtkButton" id="button_install_color">
-                                            <property name="label" translatable="yes">Color</property>
-                                            <property name="receives_default">False</property>
-                                            <property name="use_underline">True</property>
+                                          <object class="GtkColorDialogButton" id="button_install_color">
+                                            <property name="dialog">color_dialog</property>
                                           </object>
                                         </child>
                                         <layout>
@@ -567,10 +568,8 @@
                                           </object>
                                         </child>
                                         <child>
-                                          <object class="GtkButton" id="button_reinstall_color">
-                                            <property name="label" translatable="yes">Color</property>
-                                            <property name="receives_default">False</property>
-                                            <property name="use_underline">True</property>
+                                          <object class="GtkColorDialogButton" id="button_reinstall_color">
+                                            <property name="dialog">color_dialog</property>
                                           </object>
                                         </child>
                                         <layout>
@@ -592,10 +591,8 @@
                                          </object>
                                         </child>
                                         <child>
-                                          <object class="GtkButton" id="button_remove_color">
-                                            <property name="label" translatable="yes">Color</property>
-                                            <property name="receives_default">False</property>
-                                            <property name="use_underline">True</property>
+                                          <object class="GtkColorDialogButton" id="button_remove_color">
+                                            <property name="dialog">color_dialog</property>
                                           </object>
                                         </child>
                                         <layout>
@@ -617,10 +614,8 @@
                                           </object>
                                         </child>
                                         <child>
-                                          <object class="GtkButton" id="button_purge_color">
-                                            <property name="label" translatable="yes">Color</property>
-                                            <property name="receives_default">False</property>
-                                            <property name="use_underline">True</property>
+                                          <object class="GtkColorDialogButton" id="button_purge_color">
+                                            <property name="dialog">color_dialog</property>
                                           </object>
                                         </child>
                                         <layout>
@@ -642,10 +637,8 @@
                                           </object>
                                         </child>
                                         <child>
-                                          <object class="GtkButton" id="button_installed-outdated_color">
-                                            <property name="label" translatable="yes">Color</property>
-                                            <property name="receives_default">False</property>
-                                            <property name="use_underline">True</property>
+                                          <object class="GtkColorDialogButton" id="button_installed-outdated_color">
+                                            <property name="dialog">color_dialog</property>
                                           </object>
                                         </child>
                                         <layout>
@@ -667,10 +660,8 @@
                                           </object>
                                         </child>
                                         <child>
-                                          <object class="GtkButton" id="button_upgrade_color">
-                                            <property name="label" translatable="yes">Color</property>
-                                            <property name="receives_default">False</property>
-                                            <property name="use_underline">True</property>
+                                          <object class="GtkColorDialogButton" id="button_upgrade_color">
+                                            <property name="dialog">color_dialog</property>
                                           </object>
                                         </child>
                                         <layout>
@@ -692,10 +683,8 @@
                                           </object>
                                         </child>
                                         <child>
-                                          <object class="GtkButton" id="button_broken_color">
-                                            <property name="label" translatable="yes">Color</property>
-                                            <property name="receives_default">False</property>
-                                            <property name="use_underline">True</property>
+                                          <object class="GtkColorDialogButton" id="button_broken_color">
+                                            <property name="dialog">color_dialog</property>
                                           </object>
                                         </child>
                                         <layout>
@@ -717,10 +706,8 @@
                                           </object>
                                         </child>
                                         <child>
-                                          <object class="GtkButton" id="button_downgrade_color">
-                                            <property name="label" translatable="yes">Color</property>
-                                            <property name="receives_default">False</property>
-                                            <property name="use_underline">True</property>
+                                          <object class="GtkColorDialogButton" id="button_downgrade_color">
+                                            <property name="dialog">color_dialog</property>
                                           </object>
                                         </child>
                                         <layout>
@@ -742,10 +729,8 @@
                                           </object>
                                         </child>
                                         <child>
-                                          <object class="GtkButton" id="button_installed-updated_color">
-                                            <property name="label" translatable="yes">Color</property>
-                                            <property name="receives_default">False</property>
-                                            <property name="use_underline">True</property>
+                                          <object class="GtkColorDialogButton" id="button_installed-updated_color">
+                                            <property name="dialog">color_dialog</property>
                                           </object>
                                         </child>
                                         <layout>
@@ -767,10 +752,8 @@
                                           </object>
                                         </child>
                                         <child>
-                                          <object class="GtkButton" id="button_installed-locked_color">
-                                            <property name="label" translatable="yes">Color</property>
-                                            <property name="receives_default">False</property>
-                                            <property name="use_underline">True</property>
+                                          <object class="GtkColorDialogButton" id="button_installed-locked_color">
+                                            <property name="dialog">color_dialog</property>
                                           </object>
                                         </child>
                                         <layout>
@@ -792,10 +775,8 @@
                                           </object>
                                         </child>
                                         <child>
-                                          <object class="GtkButton" id="button_available_color">
-                                            <property name="label" translatable="yes">Color</property>
-                                            <property name="receives_default">False</property>
-                                            <property name="use_underline">True</property>
+                                          <object class="GtkColorDialogButton" id="button_available_color">
+                                            <property name="dialog">color_dialog</property>
                                           </object>
                                         </child>
                                         <layout>
@@ -817,10 +798,8 @@
                                           </object>
                                         </child>
                                         <child>
-                                          <object class="GtkButton" id="button_available-locked_color">
-                                            <property name="label" translatable="yes">Color</property>
-                                            <property name="receives_default">False</property>
-                                            <property name="use_underline">True</property>
+                                          <object class="GtkColorDialogButton" id="button_available-locked_color">
+                                            <property name="dialog">color_dialog</property>
                                           </object>
                                         </child>
                                         <layout>
@@ -842,10 +821,8 @@
                                           </object>
                                         </child>
                                         <child>
-                                          <object class="GtkButton" id="button_new_color">
-                                            <property name="label" translatable="yes">Color</property>
-                                            <property name="receives_default">False</property>
-                                            <property name="use_underline">True</property>
+                                          <object class="GtkColorDialogButton" id="button_new_color">
+                                            <property name="dialog">color_dialog</property>
                                           </object>
                                         </child>
                                         <layout>
