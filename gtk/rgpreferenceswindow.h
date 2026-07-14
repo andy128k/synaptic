@@ -49,8 +49,6 @@ class RGPreferencesWindow : public RGGtkBuilderWindow
       const char *visible_name;
    };
 
-   GtkCssProvider *_css_provider;
-
    // the names for the VisibleColumnsTreeView
    static const char *column_names[];
    static const char *column_visible_names[];
@@ -140,8 +138,7 @@ class RGPreferencesWindow : public RGGtkBuilderWindow
    [[nodiscard]] task<void> doneAction();
    static void clearCacheAction(GtkWidget *self, void *data);
 
-   static void cbColorClicked(GtkWidget *self, void *data);
-   [[nodiscard]] task<void> colorClicked(int status);
+   static void cbColorChanged(GObject *self, GParamSpec *pspec, gpointer data);
    static void buttonAuthenticationClicked(GtkWidget *self, void *data);
 
    static void useProxyToggled(GtkWidget *self, void *data);
