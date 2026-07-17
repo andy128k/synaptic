@@ -48,3 +48,4 @@ test_gtkpkglist = executable(
 test('test_rpackage', test_rpackage, env: test_env)
 test('test_rpackagefilter', test_rpackagefilter, env: test_env)
 test('test_rpackageview', test_rpackageview, env: test_env)
+test('test_gtkpkglist', test_gtkpkglist, env: test_env)
