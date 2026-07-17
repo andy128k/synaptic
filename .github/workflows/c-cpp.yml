@@ -18,7 +18,7 @@ jobs:
         sudo apt update
         sudo apt build-dep -y ./
         #Devscripts for bringing in debuild
-        sudo apt install meson ninja-build appstream desktop-file-utils libpolkit-gobject-1-dev devscripts -y
+        sudo apt install meson ninja-build appstream desktop-file-utils libpolkit-gobject-1-dev devscripts xwayland-run -y
 
     - name: configure
       run: |
@@ -29,7 +29,7 @@ jobs:
         meson compile -C builddir
     - name: test
       run: |
-        meson test -C builddir --print-errorlogs
+        wlheadless-run -- meson test -C builddir --print-errorlogs
     - name: debuild
       run: debuild -B -us -uc
     - name: install deb

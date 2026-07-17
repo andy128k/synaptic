@@ -12,6 +12,8 @@
 #include <iostream>
 #include <string>
 
+static void applicationActivate(GApplication* app, gpointer user_data);
+
 int main(int argc, char **argv)
 {
    gtk_init(&argc, &argv);
@@ -21,6 +23,21 @@ int main(int argc, char **argv)
 
    _config->Set("Debug::Synaptic::View", true);
 
+   GtkApplication *app = gtk_application_new(
+      "io.github.mvo5.synaptic-test-gtkpkglist",
+      G_APPLICATION_FLAGS_NONE);
+
+   g_signal_connect(app, "activate",
+      G_CALLBACK(applicationActivate), nullptr);
+
+   int status = g_application_run(G_APPLICATION(app), argc, argv);
+   g_object_unref(app);
+
+   return status;
+}
+
+static void applicationActivate(GApplication* app, gpointer user_data)
+{
    RPackageLister *lister = new RPackageLister();
    lister->openCache();
    lister->setView(0);
@@ -47,6 +64,4 @@ int main(int argc, char **argv)
    gtk_container_add(GTK_CONTAINER(win), scroll);
    gtk_window_set_default_size(GTK_WINDOW(win), 600, 400);
    gtk_widget_show_all(win);
-
-   gtk_main();
 }
