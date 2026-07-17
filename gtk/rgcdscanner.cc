@@ -28,6 +28,7 @@
 
 #   include "i18n.h"
 #   include "rgmainwindow.h"
+#   include "rgutils.h"
 
 #   include <apt-pkg/configuration.h>
 #   include <cstdio>
@@ -65,7 +66,7 @@ RGCDScanner::RGCDScanner(RGMainWindow *main, RUserDialog *userDialog)
 
    _userDialog = userDialog;
 
-   gtk_widget_set_usize(_win, 320, 90);
+   gtk_widget_set_size_request(_win, 320, 90);
 
    gtk_container_set_border_width(GTK_CONTAINER(_topBox), 10);
 
@@ -75,7 +76,7 @@ RGCDScanner::RGCDScanner(RGMainWindow *main, RUserDialog *userDialog)
 
    _pbar = gtk_progress_bar_new();
    gtk_widget_show(_pbar);
-   gtk_widget_set_usize(_pbar, -1, 25);
+   gtk_widget_set_size_request(_pbar, -1, 25);
    gtk_box_pack_start(GTK_BOX(_topBox), _pbar, FALSE, TRUE, 0);
 
    // gtk_window_set_skip_taskbar_hint(GTK_WINDOW(_win), TRUE);
@@ -118,7 +119,7 @@ RGDiscName::RGDiscName(RGWindow *wwin, const string defaultName)
    : RGGtkBuilderWindow(wwin, "disc_name")
 {
    setTitle(_("Disc Label"));
-   _textEntry = GTK_WINDOW(gtk_builder_get_object(_builder, "text_entry"));
+   _textEntry = GTK_WIDGET(gtk_builder_get_object(_builder, "text_entry"));
    gtk_entry_set_text(GTK_ENTRY(_textEntry), defaultName.c_str());
 
    g_signal_connect(gtk_builder_get_object(_builder, "ok"),

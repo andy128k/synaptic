@@ -43,14 +43,12 @@
 #include <apt-pkg/acquire-item.h>
 #include <apt-pkg/acquire.h>
 #include <apt-pkg/algorithms.h>
-#include <apt-pkg/aptconfiguration.h>
 #include <apt-pkg/clean.h>
 #include <apt-pkg/configuration.h>
 #include <apt-pkg/depcache.h>
 #include <apt-pkg/error.h>
 #include <apt-pkg/fileutl.h>
 #include <apt-pkg/hashes.h>
-#include <apt-pkg/macros.h>
 #include <apt-pkg/packagemanager.h>
 #include <apt-pkg/pkgrecords.h>
 #include <apt-pkg/pkgsystem.h>
@@ -59,7 +57,6 @@
 #include <apt-pkg/strutl.h>
 #include <apt-pkg/tagfile.h>
 #include <apt-pkg/update.h>
-#include <apt-pkg/upgrade.h>
 #include <apt-pkg/version.h>
 #include <cassert>
 #include <cstdio>
@@ -81,6 +78,7 @@
 
 #ifndef HAVE_RPM
 #   include <apt-pkg/debfile.h>
+#   include <apt-pkg/upgrade.h>
 #endif
 
 #ifdef WITH_LUA
@@ -418,9 +416,11 @@ bool RPackageLister::openCache()
       _packages.push_back(pkg);
       count++;
 
+#ifndef HAVE_RPM
       // this is what is feed to the views
       if (showAllMultiArch || !pkg->isMultiArchDuplicate())
          _nativeArchPackages.push_back(pkg);
+#endif
 
       pkgName = pkg->name();
 
@@ -1117,17 +1117,19 @@ bool RPackageLister::getStateChanges(RPackageLister::pkgState &state,
 
    if (sorted == true && changed == true) {
       if (toKeep.empty() == false)
-         sort(toKeep.begin(), toKeep.end(), bla());
+         sort(toKeep.begin(), toKeep.end(), RPackage::byNameAscending);
       if (toInstall.empty() == false)
-         sort(toInstall.begin(), toInstall.end(), bla());
+         sort(toInstall.begin(), toInstall.end(), RPackage::byNameAscending);
       if (toReInstall.empty() == false)
-         sort(toReInstall.begin(), toReInstall.end(), bla());
+         sort(
+            toReInstall.begin(), toReInstall.end(), RPackage::byNameAscending);
       if (toUpgrade.empty() == false)
-         sort(toUpgrade.begin(), toUpgrade.end(), bla());
+         sort(toUpgrade.begin(), toUpgrade.end(), RPackage::byNameAscending);
       if (toRemove.empty() == false)
-         sort(toRemove.begin(), toRemove.end(), bla());
+         sort(toRemove.begin(), toRemove.end(), RPackage::byNameAscending);
       if (toDowngrade.empty() == false)
-         sort(toDowngrade.begin(), toDowngrade.end(), bla());
+         sort(
+            toDowngrade.begin(), toDowngrade.end(), RPackage::byNameAscending);
    }
 
    return changed;
@@ -1960,10 +1962,17 @@ bool RPackageLister::readSelections(istream &in)
                   if (_config->FindB("Volatile::SetSelectionDoReInstall",
                                      false))
                      Cache.SetReInstall(Pkg, true);
+#ifdef HAVE_RPM
+                  if (_config->FindB("Volatile::SetSelectionsNoFix", false))
+                     Cache.MarkInstall(Pkg, pkgDepCache::AutoMarkFlag::Manual);
+                  else
+                     Cache.MarkInstall(Pkg, pkgDepCache::AutoMarkFlag::Auto);
+#else
                   if (_config->FindB("Volatile::SetSelectionsNoFix", false))
                      Cache.MarkInstall(Pkg, false);
                   else
                      Cache.MarkInstall(Pkg, true);
+#endif
                   break;
 
                case ACTION_UNINSTALL:

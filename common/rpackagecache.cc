@@ -123,3 +123,11 @@ void RPackageCache::releaseLock()
    _system->UnLock();
    _locked = false;
 }
+
+#ifdef HAVE_RPM
+RPackageCache::RPackageCache() : cache(false), _locked(false)
+{}
+#else
+RPackageCache::RPackageCache() : _locked(false)
+{}
+#endif

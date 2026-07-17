@@ -151,14 +151,18 @@ class RPackage
 
    std::string arch();
 
+#ifdef WITH_APT_MULTIARCH_SUPPORT
    // package is also available for the native architecture
    // (note that packages installed are never considered a duplicate
    bool isMultiArchDuplicate();
+#endif
 
+#ifndef HAVE_RPM
    // get changelog file from the debian server
    std::string getChangelogFile(pkgAcquire *fetcher);
    // get screenshot file from the debian server
    std::string getScreenshotFile(pkgAcquire *fetcher, bool thumb = true);
+#endif
 
    std::vector<std::string> provides();
 
@@ -172,9 +176,6 @@ class RPackage
    // get origin "origin" release header (e.g. Ubuntu,
    std::string getCandidateOriginStr();
 
-   // get the release file for the givel origin label string
-   std::string getReleaseFileForOrigin(std::string label, std::string release);
-
    // get installed component (like main, contrib, non-free)
    std::string component();
 
@@ -185,7 +186,9 @@ class RPackage
    std::string origin();
 
    const char *maintainer();
+#ifndef HAVE_RPM
    const char *homepage();
+#endif
    const char *vendor();
 
    const char *installedVersion();

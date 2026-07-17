@@ -146,6 +146,7 @@ vector<string> RGPkgDetailsWindow::formatDepInformation(
    return depStrings;
 }
 
+#ifndef HAVE_RPM
 void RGPkgDetailsWindow::cbShowBigScreenshot(GtkWidget *box,
                                              GdkEventButton *event,
                                              void *data)
@@ -209,6 +210,7 @@ void RGPkgDetailsWindow::cbShowChangelog(GtkWidget *button, void *data)
    RGWindow *parent = (RGWindow *)g_object_get_data(G_OBJECT(button), "me");
    ShowChangelogDialog(parent, pkg);
 }
+#endif
 
 gboolean RGPkgDetailsWindow::cbOpenLink(GtkWidget *label,
                                         gchar *uri,
@@ -223,6 +225,7 @@ gboolean RGPkgDetailsWindow::cbOpenLink(GtkWidget *label,
    return TRUE;
 }
 
+#ifndef HAVE_RPM
 gboolean RGPkgDetailsWindow::cbOpenHomepage(GtkWidget *button, void *data)
 {
    RPackage *pkg = (RPackage *)data;
@@ -234,6 +237,7 @@ gboolean RGPkgDetailsWindow::cbOpenHomepage(GtkWidget *button, void *data)
 
    return TRUE;
 }
+#endif
 
 void RGPkgDetailsWindow::fillInValues(RGGtkBuilderWindow *me,
                                       RPackage *pkg,
@@ -285,6 +289,7 @@ void RGPkgDetailsWindow::fillInValues(RGGtkBuilderWindow *me,
    GtkWidget *textview;
    GtkTextBuffer *buf;
    GtkTextIter it, start, end;
+   GtkTextChildAnchor *anchor;
    GtkWidget *emblem;
    const gchar *s;
 
@@ -330,8 +335,11 @@ void RGPkgDetailsWindow::fillInValues(RGGtkBuilderWindow *me,
 
    // add button to get screenshot
    gtk_text_buffer_insert(buf, &it, "\n", 1);
-   GtkTextChildAnchor *anchor = gtk_text_buffer_create_child_anchor(buf, &it);
    GtkWidget *button = gtk_button_new_with_label(_("Get Screenshot"));
+#ifdef HAVE_RPM
+   gtk_widget_hide(button);
+#else
+   anchor = gtk_text_buffer_create_child_anchor(buf, &it);
    static struct screenshot_info si;
    si.anchor = anchor;
    si.textview = textview;
@@ -340,17 +348,23 @@ void RGPkgDetailsWindow::fillInValues(RGGtkBuilderWindow *me,
       G_OBJECT(button), "clicked", G_CALLBACK(cbShowScreenshot), &si);
    gtk_text_view_add_child_at_anchor(GTK_TEXT_VIEW(textview), button, anchor);
    gtk_widget_show(button);
+#endif
 
    // add button to get changelog
    gtk_text_buffer_insert(buf, &it, "    ", 1);
    anchor = gtk_text_buffer_create_child_anchor(buf, &it);
    button = gtk_button_new_with_label(_("Get Changelog"));
+#ifdef HAVE_RPM
+   gtk_widget_hide(button);
+#else
    g_object_set_data(G_OBJECT(button), "me", me);
    g_signal_connect(
       G_OBJECT(button), "clicked", G_CALLBACK(cbShowChangelog), pkg);
    gtk_text_view_add_child_at_anchor(GTK_TEXT_VIEW(textview), button, anchor);
    gtk_widget_show(button);
+#endif
 
+#ifndef HAVE_RPM
    // add button to open the homepage
    if (strlen(pkg->homepage())) {
       gtk_text_buffer_insert(buf, &it, "    ", 1);
@@ -367,6 +381,7 @@ void RGPkgDetailsWindow::fillInValues(RGGtkBuilderWindow *me,
          GTK_TEXT_VIEW(textview), button, anchor);
       gtk_widget_show(button);
    }
+#endif
 
    // show the rest of the description
    gtk_text_buffer_insert(buf, &it, "\n", 1);

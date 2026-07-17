@@ -28,8 +28,6 @@
 
 #include "i18n.h"
 
-#include <apt-pkg/install-progress.h>
-#include <apt-pkg/packagemanager.h>
 #include <stdlib.h>
 #include <string>
 #include <sys/types.h>
@@ -38,7 +36,13 @@
 
 #ifdef HAVE_RPM
 #   include <apt-pkg/configuration.h>
+#   define protected public
+#   include <apt-pkg/packagemanager.h>
+#   undef protected
 #   include <fcntl.h>
+#else
+#   include <apt-pkg/packagemanager.h>
+#   include <apt-pkg/install-progress.h>
 #endif
 
 using namespace std;

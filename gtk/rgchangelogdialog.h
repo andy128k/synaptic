@@ -25,4 +25,6 @@
 class RGWindow;
 class RPackage;
 
+#ifndef HAVE_RPM
 void ShowChangelogDialog(RGWindow *me, RPackage *pkg);
+#endif

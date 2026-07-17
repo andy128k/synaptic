@@ -1,0 +1,34 @@
+name: RPM
+
+on:
+  push:
+    branches: [ master ]
+  pull_request:
+    branches: [ master ]
+
+jobs:
+  build:
+
+    runs-on: ubuntu-latest
+
+    container:
+      image: alt:latest
+
+    steps:
+    - name: update and install packages
+      run: |
+        apt-get update
+        apt-get install -y build-essential intltool meson ninja-build nodejs libgtk+3-devel appstream xmlto libpolkit-devel libapt-devel librpm-devel libvte3-devel
+
+    - uses: actions/checkout@v7
+
+    - name: configure
+      run: |
+        mkdir builddir
+        meson setup builddir
+    - name: build
+      run: |
+        meson compile -C builddir
+    - name: test
+      run: |
+        meson test -C builddir --print-errorlogs

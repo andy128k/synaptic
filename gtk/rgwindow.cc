@@ -73,7 +73,7 @@ RGWindow::RGWindow(RGWindow *parent, string name, bool makeBox, bool closable)
 {
    // std::cout
    //<< "RGWindow::RGWindow(RGWindow *parent, string name, bool makeBox,  bool
-   //closable)"
+   // closable)"
    //<< endl;
    _win = gtk_window_new(GTK_WINDOW_TOPLEVEL);
    gtk_window_set_title(GTK_WINDOW(_win), (char *)name.c_str());

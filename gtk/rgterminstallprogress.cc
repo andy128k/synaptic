@@ -36,7 +36,9 @@
 
 #   include <apt-pkg/configuration.h>
 #   include <apt-pkg/error.h>
-#   include <apt-pkg/install-progress.h>
+#   ifndef HAVE_RPM
+#      include <apt-pkg/install-progress.h>
+#   endif
 #   include <cassert>
 #   include <cerrno>
 #   include <csignal>

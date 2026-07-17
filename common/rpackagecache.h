@@ -46,7 +46,12 @@ class RPackageCache
  public:
    inline pkgDepCache *deps()
    {
+#ifdef HAVE_RPM
+      OpProgress opp;
+      return cache.GetDepCache(opp);
+#else
       return cache.GetDepCache();
+#endif
    }
    inline pkgSourceList *list()
    {
@@ -64,8 +69,7 @@ class RPackageCache
    bool lock();
    void releaseLock();
 
-   RPackageCache() : _locked(false)
-   {}
+   RPackageCache();
    ~RPackageCache()
    {}
 };
