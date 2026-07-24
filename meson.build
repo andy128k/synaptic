@@ -30,7 +30,11 @@ threads_dep = dependency('threads')
 gtk_dep = dependency('gtk+-3.0', version: '>= 3.4.0')
 pango_dep = dependency('pango', version: '>= 1.0.0')
 glib_dep = dependency('glib-2.0')
-apt_pkg_dep = dependency('apt-pkg', required: true)
+apt_pkg_dep = dependency('apt-pkg', required: false)
+if not apt_pkg_dep.found()
+  # Fallback: find libapt-pkg manually (no .pc file on some systems)
+  apt_pkg_dep = cpp.find_library('apt-pkg', required: true)
+endif
 x11_dep = cpp.find_library('X11', required: true)
 util_dep = cpp.find_library('util', required: true)
 apt_inst_dep = cpp.find_library('apt-inst', required: false)
@@ -129,7 +133,7 @@ if have_vte
   conf.set('HAVE_TERMINAL', 1)
 endif
 if get_option('dpkg_progress').enabled()
-  conf.set('WITH_DPKG_STATUSFD', 1)
+  conf.set('WITH_DPKG_STATUSFD', not have_rpm)
 endif
 if launchpad_dep.found()
   conf.set('WITH_LAUNCHPAD_INTEGRATION', 1)
@@ -138,7 +142,7 @@ if get_option('pkg_hold')
   conf.set('SYNAPTIC_PKG_HOLD', 1)
 endif
 if get_option('apt_multiarch_support')
-  conf.set('WITH_APT_MULTIARCH_SUPPORT', 1)
+  conf.set('WITH_APT_MULTIARCH_SUPPORT', not have_rpm)
 endif
 if vendor_derives_from_ubuntu
   conf.set('VENDOR_DERIVES_FROM_UBUNTU', 1)

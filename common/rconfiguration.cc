@@ -40,6 +40,7 @@
 #include <iostream>
 #include <pwd.h>
 #include <string>
+#include <glib.h>
 #include <sys/stat.h>
 #include <unistd.h>
 
@@ -173,7 +174,7 @@ static bool checkConfigDir(string &path)
    // path = "/etc/synaptic";
    path = xdg_data_dir + "/synaptic";
 
-   if (!CreateDirectory(home_dir, xdg_data_dir)) {
+   if (!g_mkdir_with_parents(xdg_data_dir.c_str(), 0700)) {
       return _error->Errno("mkdir",
                            _("ERROR: could not create XDG home directory %s"),
                            xdg_data_dir.c_str());

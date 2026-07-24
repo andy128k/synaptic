@@ -45,7 +45,6 @@
 #include <apt-pkg/fileutl.h>
 #include <apt-pkg/hashes.h>
 #include <apt-pkg/indexfile.h>
-#include <apt-pkg/metaindex.h>
 #include <apt-pkg/pkgcache.h>
 #include <apt-pkg/pkgrecords.h>
 #include <apt-pkg/sourcelist.h>
@@ -146,8 +145,12 @@ const char *RPackage::summary()
    pkgCache::VerIterator ver =
       (*_depcache)[*_package].CandidateVerIter(*_depcache);
    if (!ver.end()) {
+#ifdef HAVE_RPM
+      pkgRecords::Parser &parser = _records->Lookup(ver.FileList());
+#else
       pkgCache::DescIterator Desc = ver.TranslatedDescription();
       pkgRecords::Parser &parser = _records->Lookup(Desc.FileList());
+#endif
       _summary = parser.ShortDesc();
       return _summary.c_str();
    }
@@ -168,6 +171,7 @@ const char *RPackage::maintainer()
    return "";
 }
 
+#ifndef HAVE_RPM
 const char *RPackage::homepage()
 {
    static string _homepage;
@@ -180,6 +184,7 @@ const char *RPackage::homepage()
    }
    return "";
 }
+#endif
 
 
 string RPackage::arch()
@@ -192,7 +197,11 @@ string RPackage::arch()
    if (ver && ver.Arch())
       return ver.Arch();
 
+#ifdef HAVE_RPM
+   return "";
+#else
    return _package->Arch();
+#endif
 }
 
 const char *RPackage::vendor()
@@ -278,8 +287,12 @@ const char *RPackage::description()
       (*_depcache)[*_package].CandidateVerIter(*_depcache);
 
    if (!ver.end()) {
+#ifdef HAVE_RPM
+      pkgRecords::Parser &parser = _records->Lookup(ver.FileList());
+#else
       pkgCache::DescIterator Desc = ver.TranslatedDescription();
       pkgRecords::Parser &parser = _records->Lookup(Desc.FileList());
+#endif
       _description = parseDescription(parser.LongDesc());
       return _description.c_str();
    } else {
@@ -412,6 +425,7 @@ int RPackage::getFlags()
    if (state.Flags & pkgCache::Flag::Auto)
       flags |= FIsAuto;
 
+#ifndef HAVE_RPM
    if (state.Garbage)
       flags |= FIsGarbage;
 
@@ -420,6 +434,7 @@ int RPackage::getFlags()
 
    if (state.InstPolicyBroken())
       flags |= FInstPolicyBroken;
+#endif
 
    return flags | _boolFlags;
 }
@@ -436,6 +451,7 @@ const char *RPackage::name()
 #endif
 }
 
+#ifdef WITH_APT_MULTIARCH_SUPPORT
 bool RPackage::isMultiArchDuplicate()
 {
    // Installed packages are never "hidden"
@@ -445,6 +461,7 @@ bool RPackage::isMultiArchDuplicate()
    // from our PkgIterator this is not a interessting pkg
    return (_package->Group().FindPkg() != *_package);
 }
+#endif
 
 #if 0
 bool RPackage::isWeakDep(pkgCache::DepIterator &dep)
@@ -895,7 +912,13 @@ void RPackage::setNotify(bool flag)
 
 void RPackage::setAuto(bool flag)
 {
+#ifdef HAVE_RPM
+   _depcache->MarkAuto(*_package,
+                       flag ? pkgDepCache::AutoMarkFlag::Auto
+                            : pkgDepCache::AutoMarkFlag::Manual);
+#else
    _depcache->MarkAuto(*_package, flag);
+#endif
 }
 
 
@@ -910,7 +933,11 @@ void RPackage::setKeep()
 
 void RPackage::setInstall()
 {
+#ifdef HAVE_RPM
+   _depcache->MarkInstall(*_package, pkgDepCache::AutoMarkFlag::Auto, true);
+#else
    _depcache->MarkInstall(*_package, true);
+#endif
    pkgDepCache::StateCache &State = (*_depcache)[*_package];
 
    // FIXME: can't we get rid of it here?
@@ -960,6 +987,7 @@ void RPackage::setRemove(bool purge)
       _lister->notifyChange(this);
 }
 
+#ifndef HAVE_RPM
 string RPackage::getScreenshotFile(pkgAcquire *fetcher, bool thumb)
 {
    string descr("Screenshot for ");
@@ -1031,6 +1059,7 @@ string RPackage::getChangelogFile(pkgAcquire *fetcher)
 
    return filename;
 }
+#endif
 
 string RPackage::getCandidateOriginStr()
 {
@@ -1106,7 +1135,11 @@ void RPackage::setPinned(bool flag)
       stat(File.c_str(), &stat_buf);
       // create a tmp_pin file in the internal dir
       string filename = RStateDir() + "/.tmp_preferences";
+#ifdef HAVE_RPM
+      FileFd out(filename, FileFd::WriteEmpty);
+#else
       FileFd out(filename, FileFd::WriteOnly | FileFd::Create | FileFd::Empty);
+#endif
       if (!out.IsOpen()) {
          _error->DumpErrors();
       }
@@ -1548,34 +1581,6 @@ static pkgCache::PkgFileIterator _searchPkgFileIter(pkgCache::PkgIterator *Pkg,
    PF = pkgCache::PkgFileIterator(*Pkg->Cache());
    return PF;
 }
-
-// look for a release file that matches the given label and origin string
-string RPackage::getReleaseFileForOrigin(string label, string release)
-{
-   pkgIndexFile *index;
-   pkgCache::PkgFileIterator found =
-      _searchPkgFileIter(_package, label, string(release));
-   if (found.end())
-      return "";
-
-   // search for the matching meta-index
-   pkgSourceList *list = _lister->getCache()->list();
-   if (list->FindIndex(found, index)) {
-      vector<metaIndex *>::const_iterator I;
-      for (I = list->begin(); I != list->end(); I++) {
-         vector<pkgIndexFile *> *ifv = (*I)->GetIndexFiles();
-         if (find(ifv->begin(), ifv->end(), index) != ifv->end()) {
-            string uri = _config->FindDir("Dir::State::lists");
-            uri += URItoFileName((*I)->GetURI());
-            uri += "dists_";
-            uri += (*I)->GetDist();
-            uri += "_Release";
-            return uri;
-         }
-      }
-   }
-
-   return "";
-}
+_searchPkgFileIter(_package, label, string(release));
 
 // vim:ts=3:sw=3:et

@@ -35,6 +35,7 @@
 #include "rgcacheprogress.h"
 #include "rgchangelogdialog.h"
 #include "rgchangeswindow.h"
+#include "rginstallprogress.h"
 #include "rgdebinstallprogress.h"
 #include "rgfetchprogress.h"
 #include "rgfiltermanager.h"
@@ -85,6 +86,10 @@
 #include <unistd.h>
 #include <utility>
 #include <vector>
+
+#ifndef HAVE_APTPKG_CDROM
+#   include "rgcdscanner.h"
+#endif
 
 // include it here because depcache.h hates us if we have it before
 #include <gdk/gdkx.h>
@@ -1778,6 +1783,7 @@ void RGMainWindow::cbChangelogDialog(GSimpleAction *action,
                                      GVariant *parameter,
                                      gpointer data)
 {
+#ifndef HAVE_RPM
    RGMainWindow *me = (RGMainWindow *)data;
 
    RPackage *pkg = me->selectedPackage();
@@ -1787,6 +1793,7 @@ void RGMainWindow::cbChangelogDialog(GSimpleAction *action,
    me->setInterfaceLocked(TRUE);
    ShowChangelogDialog(me, pkg);
    me->setInterfaceLocked(FALSE);
+#endif
 }
 
 void RGMainWindow::cbPackageListRowActivated(GtkTreeView *treeview,
@@ -2673,7 +2680,7 @@ void RGMainWindow::cbProceedClicked(GSimpleAction *action,
    RGFetchProgress *fprogress = me->_fetchProgress = new RGFetchProgress(me);
    fprogress->setDescription(_("Downloading Package Files"), "");
    //			     _("The package files will be cached locally for
-   //installation."));
+   // installation."));
 
    // Do not let the treeview access the cache during the update.
    me->setTreeLocked(TRUE);

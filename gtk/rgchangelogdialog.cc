@@ -40,6 +40,7 @@ class RGWindow;
 
 using namespace std;
 
+#ifndef HAVE_RPM
 void ShowChangelogDialog(RGWindow *me, RPackage *pkg)
 {
    RGFetchProgress *status = new RGFetchProgress(me);
@@ -89,3 +90,4 @@ void ShowChangelogDialog(RGWindow *me, RPackage *pkg)
    delete status;
    unlink(filename.c_str());
 }
+#endif

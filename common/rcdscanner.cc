@@ -25,6 +25,7 @@
 #ifndef HAVE_APTPKG_CDROM
 
 #   include "rcdscanner.h"
+#   include "ruserdialog.h"
 
 #   include "i18n.h"
 

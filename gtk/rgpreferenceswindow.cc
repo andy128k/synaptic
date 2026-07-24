@@ -1142,15 +1142,17 @@ RGPreferencesWindow::RGPreferencesWindow(RGWindow *win, RPackageLister *lister)
    if (delAction == PKG_PURGE)
       delAction = PKG_DELETE;
    gtk_widget_hide(GTK_WIDGET(_comboRemovalAction));
-   gtk_widget_hide(GTK_WIDGET(gtk_builder_get_object(_builder,"label_removal"));
+   gtk_widget_hide(
+      GTK_WIDGET(gtk_builder_get_object(_builder, "label_removal")));
 #endif
 
    // set data for the checkbutton
-   g_object_set_data(gtk_builder_get_object
-                      (_builder, "checkbutton_user_font"), "me", this);
-   g_object_set_data(gtk_builder_get_object
-                      (_builder, "checkbutton_user_terminal_font"), "me",
-                     this);
+   g_object_set_data(
+      gtk_builder_get_object(_builder, "checkbutton_user_font"), "me", this);
+   g_object_set_data(
+      gtk_builder_get_object(_builder, "checkbutton_user_terminal_font"),
+      "me",
+      this);
 
    // save the lister
    _lister = lister;
@@ -1159,68 +1161,75 @@ RGPreferencesWindow::RGPreferencesWindow(RGWindow *win, RPackageLister *lister)
    _treeView = GTK_WIDGET(gtk_builder_get_object(_builder, "treeview_columns"));
    GtkCellRenderer *renderer;
    GtkTreeViewColumn *column;
-   renderer = gtk_cell_renderer_toggle_new ();
+   renderer = gtk_cell_renderer_toggle_new();
    g_object_set(renderer, "activatable", TRUE, NULL);
-   g_signal_connect(renderer, "toggled", 
- 		    (GCallback) cbToggleColumn, this);
-   column = gtk_tree_view_column_new_with_attributes(_("Visible"),
-                                                      renderer,
-                                                      "active", TREE_CHECKBOX_COLUMN,
-                                                      NULL);
-   gtk_tree_view_append_column (GTK_TREE_VIEW(_treeView), column);
-   renderer = gtk_cell_renderer_text_new ();
-   column = gtk_tree_view_column_new_with_attributes (_("Name"),
-						      renderer,
-						      "text", TREE_VISIBLE_NAME_COLUMN,
-						      NULL);
-   gtk_tree_view_append_column (GTK_TREE_VIEW(_treeView), column);
+   g_signal_connect(renderer, "toggled", (GCallback)cbToggleColumn, this);
+   column = gtk_tree_view_column_new_with_attributes(
+      _("Visible"), renderer, "active", TREE_CHECKBOX_COLUMN, NULL);
+   gtk_tree_view_append_column(GTK_TREE_VIEW(_treeView), column);
+   renderer = gtk_cell_renderer_text_new();
+   column = gtk_tree_view_column_new_with_attributes(
+      _("Name"), renderer, "text", TREE_VISIBLE_NAME_COLUMN, NULL);
+   gtk_tree_view_append_column(GTK_TREE_VIEW(_treeView), column);
 
 
    // lots of signals :)
    g_signal_connect(gtk_builder_get_object(_builder, "button_column_up"),
                     "clicked",
-                    G_CALLBACK(cbMoveColumnUp), this);
+                    G_CALLBACK(cbMoveColumnUp),
+                    this);
    g_signal_connect(gtk_builder_get_object(_builder, "button_column_down"),
                     "clicked",
-                    G_CALLBACK(cbMoveColumnDown), this);
+                    G_CALLBACK(cbMoveColumnDown),
+                    this);
 
    g_signal_connect(gtk_builder_get_object(_builder, "close"),
                     "clicked",
-                    G_CALLBACK(closeAction), this);
+                    G_CALLBACK(closeAction),
+                    this);
    g_signal_connect(gtk_builder_get_object(_builder, "apply"),
                     "clicked",
-                    G_CALLBACK(saveAction), this);
+                    G_CALLBACK(saveAction),
+                    this);
    g_signal_connect(gtk_builder_get_object(_builder, "ok"),
                     "clicked",
-                    G_CALLBACK(doneAction), this);
+                    G_CALLBACK(doneAction),
+                    this);
 
    g_signal_connect(gtk_builder_get_object(_builder, "button_clean_cache"),
                     "clicked",
-                    G_CALLBACK(clearCacheAction), this);
+                    G_CALLBACK(clearCacheAction),
+                    this);
 
    g_signal_connect(gtk_builder_get_object(_builder, "radio_use_proxy"),
                     "toggled",
-                    G_CALLBACK(useProxyToggled), this);
+                    G_CALLBACK(useProxyToggled),
+                    this);
 
    g_signal_connect(gtk_builder_get_object(_builder, "button_authentication"),
                     "clicked",
-                    G_CALLBACK(buttonAuthenticationClicked), this);
+                    G_CALLBACK(buttonAuthenticationClicked),
+                    this);
 
    g_signal_connect(gtk_builder_get_object(_builder, "button_default_font"),
                     "clicked",
-                    G_CALLBACK(changeFontAction),GINT_TO_POINTER(FONT_DEFAULT));
+                    G_CALLBACK(changeFontAction),
+                    GINT_TO_POINTER(FONT_DEFAULT));
 
-   g_signal_connect(gtk_builder_get_object(_builder, "checkbutton_user_terminal_font"),
-                    "toggled",
-                    G_CALLBACK (checkbuttonUserTerminalFontToggled), this);
+   g_signal_connect(
+      gtk_builder_get_object(_builder, "checkbutton_user_terminal_font"),
+      "toggled",
+      G_CALLBACK(checkbuttonUserTerminalFontToggled),
+      this);
    g_signal_connect(gtk_builder_get_object(_builder, "checkbutton_user_font"),
                     "toggled",
-                    G_CALLBACK(checkbuttonUserFontToggled), this);
+                    G_CALLBACK(checkbuttonUserFontToggled),
+                    this);
 
    g_signal_connect(gtk_builder_get_object(_builder, "button_terminal_font"),
-                                 "clicked",
-                                 G_CALLBACK(changeFontAction),
-                                 GINT_TO_POINTER(FONT_TERMINAL));
+                    "clicked",
+                    G_CALLBACK(changeFontAction),
+                    GINT_TO_POINTER(FONT_TERMINAL));
 
    checkbuttonUserTerminalFontToggled(NULL, this);
    checkbuttonUserFontToggled(NULL, this);
